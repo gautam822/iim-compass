@@ -87,7 +87,10 @@ def ask_gemini(prompt):
 # ===== MAIN APP =====
 def main():
 
-    # Header
+    st.markdown(
+        '<meta name="google-site-verification" content="RAPwhmaA35OeaQ8ENNNRYUncbAbr2Zdsubi7HnekLVQ" />',
+        unsafe_allow_html=True
+    )
     st.markdown(
         '<div class="big-title">🎓 IIM Placement Intelligence</div>',
         unsafe_allow_html=True
