@@ -10,15 +10,23 @@ load_dotenv()
 
 # ===== PAGE CONFIG =====
 st.set_page_config(
-    GA_ID="G-289F2CP87R"
     page_title="IIM Placement Intelligence",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded"
 )
-# ===== GOOGLE VERIFICATION + STYLING =====
+# ===== GOOGLE VERIFICATION + ANALYTICS + STYLING =====
 st.markdown("""
-<meta name="google-site-verification" content="RAPwhmaA35OeaQ8ENNNRYUncbAbr2Zdsubi7HnekLVQ" /><style>
+<meta name="google-site-verification" content="RAPwhmaA35OeaQ8ENNNRYUncbAbr2Zdsubi7HnekLVQ" />
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-289F2CP87R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-289F2CP87R');
+</script>
+<style>
     .big-title {
         font-size: 2.5rem;
         font-weight: 800;
