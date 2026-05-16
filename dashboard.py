@@ -10,12 +10,12 @@ load_dotenv()
 
 # ===== PAGE CONFIG =====
 st.set_page_config(
+    GA_ID="G-289F2CP87R"
     page_title="IIM Placement Intelligence",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
 # ===== GOOGLE VERIFICATION + STYLING =====
 st.markdown("""
 <meta name="google-site-verification" content="RAPwhmaA35OeaQ8ENNNRYUncbAbr2Zdsubi7HnekLVQ" /><style>
