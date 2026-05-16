@@ -1,4 +1,4 @@
-# dashboard.py — IIM Placement Comparison Dashboard
+# dashboard.py — IIM Placement Comparison Dashboard (Final Fixed Version)
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -16,8 +16,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ===== CUSTOM STYLING =====
+# ===== GOOGLE VERIFICATION + STYLING =====
 st.markdown("""
+<meta name="google-site-verification" content="RAPwhmaA35OeaQ8ENNNRYUncbAbr2Zdsubi7HnekLVQ" />
 <style>
     .big-title {
         font-size: 2.5rem;
@@ -40,6 +41,16 @@ st.markdown("""
         padding-left: 12px;
         margin: 25px 0 15px 0;
     }
+    /* Fix metric truncation */
+    [data-testid="stMetricValue"] {
+        font-size: 1.1rem !important;
+        overflow: visible !important;
+        white-space: normal !important;
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 0.75rem !important;
+        white-space: normal !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -61,10 +72,10 @@ def get_api_key():
 @st.cache_data
 def load_all_data():
     try:
-        stats = pd.read_csv('placement_stats.csv')
+        stats    = pd.read_csv('placement_stats.csv')
         companies = pd.read_csv('companies.csv')
-        sectors = pd.read_csv('sectors.csv')
-        roles = pd.read_csv('roles.csv')
+        sectors  = pd.read_csv('sectors.csv')
+        roles    = pd.read_csv('roles.csv')
         return stats, companies, sectors, roles
     except FileNotFoundError:
         st.error("Data files not found! Please run scraper.py first.")
@@ -84,19 +95,107 @@ def ask_gemini(prompt):
     except Exception as e:
         return f"AI Analysis error: {e}"
 
+# ===== COLLEGE CARD — uses a clean HTML table, no f-string issues =====
+def render_college_card(row, color, badge_text, badge_type):
+    """Render a single college card using a plain HTML table — no truncation."""
+
+    avg  = row['Overall Average Package (LPA)']
+    high = row['Highest Package (LPA)']
+    med  = row['Overall Median (LPA)']
+    fees = row['Fees (LPA)']
+    batch = int(row['Batch Size'])
+    place = row['Placement Rate (%)']
+    rec   = int(row['Total Recruiters'])
+    roi   = round(avg / fees, 2)
+
+    # Badge HTML built outside the main f-string
+    if badge_text:
+        badge_color = "#27ae60" if badge_type == "success" else "#3498db"
+        badge_html = (
+            f'<tr><td colspan="2" style="text-align:center;padding:6px 0;">'
+            f'<span style="background:{badge_color};color:white;padding:4px 14px;'
+            f'border-radius:20px;font-size:0.8rem;font-weight:bold;">'
+            f'{badge_text}</span></td></tr>'
+        )
+    else:
+        badge_html = '<tr><td colspan="2" style="height:30px;"></td></tr>'
+
+    card = f"""
+<div style="border:2px solid {color};border-radius:15px;padding:20px;
+            background:linear-gradient(135deg,{color}15,{color}05);
+            margin-bottom:10px;">
+  <h3 style="color:{color};text-align:center;margin:0 0 4px 0;">{row['College']}</h3>
+  <p style="color:#888;text-align:center;font-size:0.85rem;margin:0 0 10px 0;">
+    {row['Type']}
+  </p>
+  <table style="width:100%;border-collapse:collapse;">
+    {badge_html}
+    <tr style="border-top:1px solid {color}44;">
+      <td style="padding:6px 4px;font-size:0.85rem;color:#555;">💰 Avg Package</td>
+      <td style="padding:6px 4px;font-size:0.85rem;font-weight:bold;text-align:right;">
+        Rs {avg} LPA
+      </td>
+    </tr>
+    <tr style="background:{color}08;">
+      <td style="padding:6px 4px;font-size:0.85rem;color:#555;">🏆 Highest Pkg</td>
+      <td style="padding:6px 4px;font-size:0.85rem;font-weight:bold;text-align:right;">
+        Rs {high} LPA
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:6px 4px;font-size:0.85rem;color:#555;">📊 Median</td>
+      <td style="padding:6px 4px;font-size:0.85rem;font-weight:bold;text-align:right;">
+        Rs {med} LPA
+      </td>
+    </tr>
+    <tr style="background:{color}08;">
+      <td style="padding:6px 4px;font-size:0.85rem;color:#555;">👥 Batch Size</td>
+      <td style="padding:6px 4px;font-size:0.85rem;font-weight:bold;text-align:right;">
+        {batch} students
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:6px 4px;font-size:0.85rem;color:#555;">✅ Placement</td>
+      <td style="padding:6px 4px;font-size:0.85rem;font-weight:bold;text-align:right;">
+        {place}%
+      </td>
+    </tr>
+    <tr style="background:{color}08;">
+      <td style="padding:6px 4px;font-size:0.85rem;color:#555;">🏢 Recruiters</td>
+      <td style="padding:6px 4px;font-size:0.85rem;font-weight:bold;text-align:right;">
+        {rec}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:6px 4px;font-size:0.85rem;color:#555;">💸 Fees</td>
+      <td style="padding:6px 4px;font-size:0.85rem;font-weight:bold;text-align:right;">
+        Rs {fees} LPA
+      </td>
+    </tr>
+    <tr style="background:{color}08;">
+      <td style="padding:6px 4px;font-size:0.85rem;color:#555;">📈 ROI</td>
+      <td style="padding:6px 4px;font-size:0.85rem;font-weight:bold;text-align:right;">
+        {roi}x
+      </td>
+    </tr>
+  </table>
+</div>
+"""
+    st.markdown(card, unsafe_allow_html=True)
+
+
 # ===== MAIN APP =====
 def main():
 
-    st.markdown(
-        '<meta name="google-site-verification" content="RAPwhmaA35OeaQ8ENNNRYUncbAbr2Zdsubi7HnekLVQ" />',
-        unsafe_allow_html=True
-    )
+    # Header
     st.markdown(
         '<div class="big-title">🎓 IIM Placement Intelligence</div>',
         unsafe_allow_html=True
     )
     st.markdown(
-        '<div class="subtitle">IIM Amritsar vs IIM Kashipur vs NMIMS Mumbai — Data-Driven Comparison</div>',
+        '<div class="subtitle">'
+        'IIM Amritsar vs IIM Kashipur vs NMIMS Mumbai — Data-Driven Comparison'
+        '</div>',
         unsafe_allow_html=True
     )
 
@@ -105,31 +204,28 @@ def main():
 
     # ===== SIDEBAR =====
     with st.sidebar:
-        st.title("Controls")
-
+        st.title("⚙️ Controls")
         selected_colleges = st.multiselect(
             "Select Colleges",
             options=df_stats['College'].tolist(),
             default=df_stats['College'].tolist()
         )
-
         st.divider()
-        st.markdown("### Data Info")
+        st.markdown("### 📊 Data Info")
         st.info(
             f"**Colleges:** {len(selected_colleges)} selected\n\n"
             f"**Data Year:** 2024-25\n\n"
             f"**Companies tracked:** {len(df_companies)}\n\n"
             f"**Source:** Official reports + NIRF"
         )
-
-        if st.button("Refresh", use_container_width=True):
+        if st.button("🔄 Refresh", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 
-    # Filter data
-    df_f = df_stats[df_stats['College'].isin(selected_colleges)]
-    df_comp_f = df_companies[df_companies['College'].isin(selected_colleges)]
-    df_sec_f = df_sectors[df_sectors['College'].isin(selected_colleges)]
+    # Filter
+    df_f       = df_stats[df_stats['College'].isin(selected_colleges)]
+    df_comp_f  = df_companies[df_companies['College'].isin(selected_colleges)]
+    df_sec_f   = df_sectors[df_sectors['College'].isin(selected_colleges)]
     df_roles_f = df_roles[df_roles['College'].isin(selected_colleges)]
 
     # ===== TABS =====
@@ -149,114 +245,58 @@ def main():
         )
 
         cols = st.columns(len(selected_colleges))
+        best_avg  = df_f['Overall Average Package (LPA)'].max()
+        best_high = df_f['Highest Package (LPA)'].max()
 
         for i, (_, row) in enumerate(df_f.iterrows()):
             with cols[i]:
-                college = str(row['College'])
-                color = COLLEGE_COLORS.get(college, "#667eea")
+                color = COLLEGE_COLORS.get(str(row['College']), "#667eea")
 
-                is_best_avg = (
-                    row['Overall Average Package (LPA)'] ==
-                    df_f['Overall Average Package (LPA)'].max()
-                )
-                is_highest_pkg = (
-                    row['Highest Package (LPA)'] ==
-                    df_f['Highest Package (LPA)'].max()
-                )
+                is_best_avg  = row['Overall Average Package (LPA)'] == best_avg
+                is_best_high = row['Highest Package (LPA)'] == best_high
 
-                # College name
-                st.markdown(
-                    f"<h3 style='color:{color};text-align:center;"
-                    f"margin-bottom:5px;'>{college}</h3>",
-                    unsafe_allow_html=True
-                )
-                st.caption(str(row['Type']))
-
-                # Badge — pure Streamlit, no HTML
                 if is_best_avg:
-                    st.success("🥇 Best Average Package")
-                elif is_highest_pkg:
-                    st.info("🚀 Highest Package")
+                    badge_text, badge_type = "🥇 Best Average Package", "success"
+                elif is_best_high:
+                    badge_text, badge_type = "🚀 Highest Package", "info"
+                else:
+                    badge_text, badge_type = "", ""
 
-                st.divider()
-
-                # Stats as metrics
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    st.metric(
-                        "Avg Package",
-                        f"Rs {row['Overall Average Package (LPA)']} LPA"
-                    )
-                    st.metric(
-                        "Batch Size",
-                        f"{int(row['Batch Size'])} students"
-                    )
-                    st.metric(
-                        "Recruiters",
-                        f"{int(row['Total Recruiters'])}"
-                    )
-                with col_b:
-                    st.metric(
-                        "Highest Pkg",
-                        f"Rs {row['Highest Package (LPA)']} LPA"
-                    )
-                    st.metric(
-                        "Placement",
-                        f"{row['Placement Rate (%)']}%"
-                    )
-                    st.metric(
-                        "Fees",
-                        f"Rs {row['Fees (LPA)']} LPA"
-                    )
-
-                st.divider()
-
-                roi = round(
-                    row['Overall Average Package (LPA)'] /
-                    row['Fees (LPA)'], 2
-                )
-                st.metric(
-                    "ROI (Avg Pkg / Fees)",
-                    f"{roi}x",
-                    delta="Good" if roi > 1 else "Low",
-                    delta_color="normal"
-                )
+                render_college_card(row, color, badge_text, badge_type)
 
         st.divider()
 
+        # Full stats table
         st.markdown(
             '<div class="section-title">📋 Complete Placement Stats</div>',
             unsafe_allow_html=True
         )
-
         display_cols = [
             'College', 'Type', 'Batch Size', 'Placement Rate (%)',
             'Highest Package (LPA)', 'Overall Average Package (LPA)',
             'Overall Median (LPA)', 'Total Recruiters', 'Fees (LPA)'
         ]
-
         st.dataframe(
             df_f[display_cols],
             use_container_width=True,
             hide_index=True,
             column_config={
-                "Highest Package (LPA)": st.column_config.NumberColumn(
-                    format="Rs %.2f LPA"),
-                "Overall Average Package (LPA)": st.column_config.NumberColumn(
-                    format="Rs %.2f LPA"),
-                "Overall Median (LPA)": st.column_config.NumberColumn(
-                    format="Rs %.2f LPA"),
-                "Fees (LPA)": st.column_config.NumberColumn(
-                    format="Rs %.1f LPA"),
-                "Placement Rate (%)": st.column_config.NumberColumn(
-                    format="%.1f%%"),
+                "Highest Package (LPA)":
+                    st.column_config.NumberColumn(format="Rs %.2f LPA"),
+                "Overall Average Package (LPA)":
+                    st.column_config.NumberColumn(format="Rs %.2f LPA"),
+                "Overall Median (LPA)":
+                    st.column_config.NumberColumn(format="Rs %.2f LPA"),
+                "Fees (LPA)":
+                    st.column_config.NumberColumn(format="Rs %.1f LPA"),
+                "Placement Rate (%)":
+                    st.column_config.NumberColumn(format="%.1f%%"),
             }
         )
-
-        csv = df_f.to_csv(index=False)
         st.download_button(
-            "Download Stats (CSV)",
-            csv, "placement_stats.csv", "text/csv"
+            "⬇️ Download Stats (CSV)",
+            df_f.to_csv(index=False),
+            "placement_stats.csv", "text/csv"
         )
 
     # ========== TAB 2: PACKAGES ==========
@@ -271,10 +311,10 @@ def main():
         with col1:
             fig = go.Figure()
             metrics = {
-                "Highest Package (LPA)": "#e74c3c",
-                "Average Package - Top 20% (LPA)": "#f39c12",
-                "Overall Average Package (LPA)": "#27ae60",
-                "Overall Median (LPA)": "#3498db"
+                "Highest Package (LPA)":            "#e74c3c",
+                "Average Package - Top 20% (LPA)":  "#f39c12",
+                "Overall Average Package (LPA)":    "#27ae60",
+                "Overall Median (LPA)":             "#3498db"
             }
             for metric, color in metrics.items():
                 label = metric.replace(" (LPA)", "").replace("Package", "Pkg")
@@ -284,7 +324,7 @@ def main():
                     y=df_f[metric],
                     marker_color=color,
                     text=df_f[metric].apply(
-                        lambda x: f"Rs{x}L" if pd.notna(x) else "N/A"),
+                        lambda x: f"Rs {x}L" if pd.notna(x) else "N/A"),
                     textposition='outside'
                 ))
             fig.update_layout(
@@ -311,31 +351,23 @@ def main():
             fig_roi = px.bar(
                 df_roi, x='College', y='ROI',
                 title='ROI — Average Package / Fees',
-                color='College',
-                color_discrete_map=COLLEGE_COLORS,
-                text='ROI'
+                color='College', color_discrete_map=COLLEGE_COLORS, text='ROI'
             )
-            fig_roi.update_traces(
-                texttemplate='%{text}x', textposition='outside')
-            fig_roi.update_layout(
-                showlegend=False, height=220,
-                plot_bgcolor='rgba(0,0,0,0)',
-            )
+            fig_roi.update_traces(texttemplate='%{text}x', textposition='outside')
+            fig_roi.update_layout(showlegend=False, height=220,
+                                  plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_roi, use_container_width=True)
 
             fig_pb = px.bar(
                 df_roi, x='College', y='Payback Years',
                 title='Fee Payback Period (Years)',
-                color='College',
-                color_discrete_map=COLLEGE_COLORS,
+                color='College', color_discrete_map=COLLEGE_COLORS,
                 text='Payback Years'
             )
-            fig_pb.update_traces(
-                texttemplate='%{text} yrs', textposition='outside')
-            fig_pb.update_layout(
-                showlegend=False, height=220,
-                plot_bgcolor='rgba(0,0,0,0)',
-            )
+            fig_pb.update_traces(texttemplate='%{text} yrs',
+                                 textposition='outside')
+            fig_pb.update_layout(showlegend=False, height=220,
+                                 plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_pb, use_container_width=True)
 
         st.markdown(
@@ -344,13 +376,11 @@ def main():
         )
         fig_scatter = px.scatter(
             df_f,
-            x='Fees (LPA)',
-            y='Overall Average Package (LPA)',
+            x='Fees (LPA)', y='Overall Average Package (LPA)',
             size='Total Recruiters',
-            color='College',
-            color_discrete_map=COLLEGE_COLORS,
+            color='College', color_discrete_map=COLLEGE_COLORS,
             text='College',
-            title='Fees vs Average Package (bubble = recruiters)',
+            title='Fees vs Average Package (bubble = number of recruiters)',
         )
         fig_scatter.update_traces(textposition='top center')
         fig_scatter.update_layout(height=400)
@@ -370,13 +400,12 @@ def main():
             fig_comp = px.bar(
                 company_count, x='College', y='Companies',
                 title='Number of Recruiters per College',
-                color='College',
-                color_discrete_map=COLLEGE_COLORS,
+                color='College', color_discrete_map=COLLEGE_COLORS,
                 text='Companies'
             )
             fig_comp.update_traces(textposition='outside')
-            fig_comp.update_layout(
-                showlegend=False, plot_bgcolor='rgba(0,0,0,0)')
+            fig_comp.update_layout(showlegend=False,
+                                   plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_comp, use_container_width=True)
 
         with col2:
@@ -385,38 +414,33 @@ def main():
             fig_roles_chart = px.bar(
                 roles_count, x='College', y='Roles',
                 title='Variety of Job Roles Offered',
-                color='College',
-                color_discrete_map=COLLEGE_COLORS,
+                color='College', color_discrete_map=COLLEGE_COLORS,
                 text='Roles'
             )
             fig_roles_chart.update_traces(textposition='outside')
-            fig_roles_chart.update_layout(
-                showlegend=False, plot_bgcolor='rgba(0,0,0,0)')
+            fig_roles_chart.update_layout(showlegend=False,
+                                          plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_roles_chart, use_container_width=True)
 
         st.markdown(
             '<div class="section-title">📋 Companies & Roles by College</div>',
             unsafe_allow_html=True
         )
-
         if selected_colleges:
             tabs_colleges = st.tabs(selected_colleges)
             for i, college in enumerate(selected_colleges):
                 with tabs_colleges[i]:
                     col_companies = df_comp_f[
-                        df_comp_f['College'] == college
-                    ]['Company'].tolist()
+                        df_comp_f['College'] == college]['Company'].tolist()
                     col_roles = df_roles_f[
-                        df_roles_f['College'] == college
-                    ]['Role'].tolist()
-
+                        df_roles_f['College'] == college]['Role'].tolist()
                     c1, c2 = st.columns(2)
                     with c1:
-                        st.markdown("**Companies Visiting:**")
+                        st.markdown("**🏢 Companies Visiting:**")
                         for company in col_companies:
                             st.markdown(f"- {company}")
                     with c2:
-                        st.markdown("**Roles Offered:**")
+                        st.markdown("**💼 Roles Offered:**")
                         for role in col_roles:
                             st.markdown(f"- {role}")
 
@@ -426,9 +450,7 @@ def main():
                 unsafe_allow_html=True
             )
             sets = [
-                set(df_comp_f[
-                    df_comp_f['College'] == c
-                ]['Company'].tolist())
+                set(df_comp_f[df_comp_f['College'] == c]['Company'].tolist())
                 for c in selected_colleges
             ]
             common = sets[0]
@@ -440,10 +462,10 @@ def main():
             else:
                 st.info("No companies common across all selected colleges.")
 
-        csv_comp = df_comp_f.to_csv(index=False)
         st.download_button(
-            "Download Companies (CSV)",
-            csv_comp, "companies.csv", "text/csv"
+            "⬇️ Download Companies (CSV)",
+            df_comp_f.to_csv(index=False),
+            "companies.csv", "text/csv"
         )
 
     # ========== TAB 4: SECTORS ==========
@@ -456,19 +478,13 @@ def main():
         col1, col2 = st.columns(2)
         with col1:
             fig_sec = px.bar(
-                df_sec_f,
-                x='Sector',
-                y='Percentage (%)',
-                color='College',
-                barmode='group',
+                df_sec_f, x='Sector', y='Percentage (%)',
+                color='College', barmode='group',
                 color_discrete_map=COLLEGE_COLORS,
                 title='Sector Distribution by College (%)',
             )
-            fig_sec.update_layout(
-                height=400,
-                xaxis_tickangle=-30,
-                plot_bgcolor='rgba(0,0,0,0)'
-            )
+            fig_sec.update_layout(height=400, xaxis_tickangle=-30,
+                                  plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_sec, use_container_width=True)
 
         with col2:
@@ -476,11 +492,8 @@ def main():
                 df_pie = df_sec_f[df_sec_f['College'] == college]
                 if not df_pie.empty:
                     fig_pie = px.pie(
-                        df_pie,
-                        values='Percentage (%)',
-                        names='Sector',
-                        title=f'{college} — Sector Split',
-                        hole=0.4
+                        df_pie, values='Percentage (%)', names='Sector',
+                        title=f'{college} — Sector Split', hole=0.4
                     )
                     fig_pie.update_layout(height=280)
                     st.plotly_chart(fig_pie, use_container_width=True)
@@ -490,24 +503,20 @@ def main():
             unsafe_allow_html=True
         )
         df_pivot = df_sec_f.pivot_table(
-            values='Percentage (%)',
-            index='Sector',
-            columns='College',
-            fill_value=0
+            values='Percentage (%)', index='Sector',
+            columns='College', fill_value=0
         )
         fig_heat = px.imshow(
-            df_pivot,
-            color_continuous_scale='Blues',
-            title='Sector Placement % Heatmap',
-            text_auto=True
+            df_pivot, color_continuous_scale='Blues',
+            title='Sector Placement % Heatmap', text_auto=True
         )
         fig_heat.update_layout(height=400)
         st.plotly_chart(fig_heat, use_container_width=True)
 
-        csv_sec = df_sec_f.to_csv(index=False)
         st.download_button(
-            "Download Sectors (CSV)",
-            csv_sec, "sectors.csv", "text/csv"
+            "⬇️ Download Sectors (CSV)",
+            df_sec_f.to_csv(index=False),
+            "sectors.csv", "text/csv"
         )
 
     # ========== TAB 5: AI ANALYSIS ==========
@@ -523,19 +532,19 @@ def main():
             "Which is best for Finance or BFSI careers?":
                 "Which college is best for BFSI or Finance roles? Justify with data.",
             "Which is best for a fresher?":
-                "Which college suits a fresh graduate? Consider fees, ROI, placement rates.",
+                "Which suits a fresh graduate — considering fees, ROI, placement rates?",
             "Compare the risk at each college":
-                "What is the risk at each college? Consider unplaced students and salary spread.",
+                "What is the risk? Consider unplaced students and salary spread.",
             "Which college has the most prestigious companies?":
                 "Compare quality and prestige of recruiters across colleges.",
             "Overall winner for MBA?":
-                "Give an honest data-driven verdict: which is the best MBA college and why?"
+                "Honest data-driven verdict: which is the best MBA college and why?"
         }
 
-        selected_q = st.selectbox("Choose a question:", list(questions.keys()))
-        custom_q = st.text_input("Or type your own question:")
+        selected_q = st.selectbox("📝 Choose a question:", list(questions.keys()))
+        custom_q   = st.text_input("✏️ Or type your own question:")
 
-        if st.button("Ask Gemini", type="primary", use_container_width=True):
+        if st.button("🤖 Ask Gemini", type="primary", use_container_width=True):
             context = f"""
 You are an MBA placement expert. Analyze this data:
 
@@ -546,9 +555,9 @@ SECTOR DISTRIBUTION:
 {df_sec_f.to_string(index=False)}
 
 COMPANIES:
-IIM Amritsar: {', '.join(df_comp_f[df_comp_f['College'] == 'IIM Amritsar']['Company'].tolist()[:15])}
-IIM Kashipur: {', '.join(df_comp_f[df_comp_f['College'] == 'IIM Kashipur']['Company'].tolist()[:15])}
-NMIMS Mumbai: {', '.join(df_comp_f[df_comp_f['College'] == 'NMIMS Mumbai']['Company'].tolist()[:15])}
+IIM Amritsar: {', '.join(df_comp_f[df_comp_f['College']=='IIM Amritsar']['Company'].tolist()[:15])}
+IIM Kashipur: {', '.join(df_comp_f[df_comp_f['College']=='IIM Kashipur']['Company'].tolist()[:15])}
+NMIMS Mumbai: {', '.join(df_comp_f[df_comp_f['College']=='NMIMS Mumbai']['Company'].tolist()[:15])}
 
 Question: {custom_q if custom_q else questions[selected_q]}
 
@@ -558,16 +567,14 @@ Give:
 3. Recommendation for different student profiles
 Keep it concise and practical.
 """
-            with st.spinner("Gemini is analyzing..."):
+            with st.spinner("🧠 Gemini is analyzing..."):
                 analysis = ask_gemini(context)
-            st.success("Analysis Ready!")
+            st.success("✅ Analysis Ready!")
             st.markdown(analysis)
 
         st.divider()
-        st.markdown("**Key Numbers At a Glance:**")
-        col1, col2, col3 = st.columns(3)
-        cols_list = [col1, col2, col3]
-
+        st.markdown("**📊 Key Numbers At a Glance:**")
+        cols_list = st.columns(min(len(df_f), 3))
         for i, (_, row) in enumerate(df_f.iterrows()):
             if i < 3:
                 with cols_list[i]:
@@ -589,7 +596,6 @@ Keep it concise and practical.
             '<div class="section-title">📥 Export Everything</div>',
             unsafe_allow_html=True
         )
-
         col1, col2 = st.columns(2)
         with col1:
             try:
@@ -605,22 +611,21 @@ Keep it concise and practical.
                     df_roles.to_excel(
                         writer, sheet_name='Job Roles', index=False)
                 st.download_button(
-                    "Download Complete Excel Report",
+                    "📁 Download Complete Excel Report",
                     buffer.getvalue(),
                     "IIM_Placement_Report.xlsx",
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "application/vnd.openxmlformats-officedocument"
+                    ".spreadsheetml.sheet",
                     use_container_width=True
                 )
             except Exception as e:
                 st.error(f"Excel export error: {e}")
 
         with col2:
-            all_csv = df_stats.to_csv(index=False)
             st.download_button(
-                "Download Stats CSV",
-                all_csv,
-                "IIM_All_Data.csv",
-                "text/csv",
+                "📊 Download Stats CSV",
+                df_stats.to_csv(index=False),
+                "IIM_All_Data.csv", "text/csv",
                 use_container_width=True
             )
 
@@ -628,7 +633,7 @@ Keep it concise and practical.
     st.divider()
     st.markdown(
         "<div style='text-align:center;color:#aaa;font-size:0.85rem;'>"
-        "IIM Placement Intelligence | Data: 2024-25 | "
+        "🎓 IIM Placement Intelligence | Data: 2024-25 Official Reports + NIRF | "
         "AI: Google Gemini | Built with Python + Streamlit"
         "</div>",
         unsafe_allow_html=True
