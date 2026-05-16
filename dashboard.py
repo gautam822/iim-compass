@@ -18,8 +18,7 @@ st.set_page_config(
 
 # ===== GOOGLE VERIFICATION + STYLING =====
 st.markdown("""
-<meta name="google-site-verification" content="RAPwhmaA35OeaQ8ENNNRYUncbAbr2Zdsubi7HnekLVQ" />
-<style>
+<meta name="google-site-verification" content="RAPwhmaA35OeaQ8ENNNRYUncbAbr2Zdsubi7HnekLVQ" /><style>
     .big-title {
         font-size: 2.5rem;
         font-weight: 800;
